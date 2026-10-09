@@ -150,6 +150,30 @@ if [ "$HAS_CREATURE_TABLE" -eq 0 ]; then
         echo "--> [World] Importando $WORLD_SQL en base de datos world (esto puede tardar unos minutos)..."
         $MYSQL_CMD world < "$WORLD_SQL"
         echo "--> [World] SFDB importado exitosamente."
+
+        # Crear tablas de tracking de updates que el worldserver espera para evitar
+        # "world database update tracking table is missing on a non-empty schema"
+        echo "--> [World] Creando tablas de tracking de updates..."
+        $MYSQL_CMD world -e "
+        CREATE TABLE IF NOT EXISTS \`updates\` (
+          \`name\` VARCHAR(200) NOT NULL COMMENT 'filename with extension of the update',
+          \`hash\` CHAR(40) DEFAULT '' COMMENT 'sha1 hash of the sql file',
+          \`state\` ENUM('RELEASED','ARCHIVED') NOT NULL DEFAULT 'RELEASED',
+          \`timestamp\` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Timestamp when the query was applied',
+          \`speed\` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT 'time the query takes to apply in ms',
+          PRIMARY KEY (\`name\`)
+        ) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COMMENT='List of all applied updates in this database';
+
+        CREATE TABLE IF NOT EXISTS \`updates_include\` (
+          \`path\` VARCHAR(200) NOT NULL COMMENT 'directory to include. $ means relative to the source directory',
+          \`state\` ENUM('RELEASED','ARCHIVED') NOT NULL DEFAULT 'RELEASED',
+          PRIMARY KEY (\`path\`)
+        ) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COMMENT='List of directories where we want to include sql updates';
+
+        INSERT IGNORE INTO \`updates_include\` (\`path\`, \`state\`) VALUES
+          ('\$\{CMAKE_SOURCE_DIR\}/sql/updates/world', 'RELEASED');
+        "
+        echo "--> [World] Tablas de tracking creadas exitosamente."
     else
         echo "ERROR: No se pudo localizar el archivo SQL de la base de datos world (SFDB)."
         echo "Contenido en $CACHE_DIR:"

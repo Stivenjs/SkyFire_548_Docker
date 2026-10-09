@@ -91,6 +91,9 @@ configure_worldserver() {
     sed -i -E "s|^[# ]*WorldDatabase\.SqlPath[[:space:]]*=.*|WorldDatabase.SqlPath = \"/opt/skyfire-server/sql\"|g" "$conf"
     sed -i -E "s|^[# ]*CharacterDatabase\.SqlPath[[:space:]]*=.*|CharacterDatabase.SqlPath = \"/opt/skyfire-server/sql\"|g" "$conf"
     sed -i -E "s|^[# ]*CharacterDatabase\.AutoSetup[[:space:]]*=.*|CharacterDatabase.AutoSetup = 1|g" "$conf"
+    # Crear la tabla de tracking de updates automáticamente al detectar un esquema existente sin ella
+    sed -i -E "s|^[# ]*WorldDatabase\.AutoBaseline[[:space:]]*=.*|WorldDatabase.AutoBaseline = 1|g" "$conf"
+    sed -i -E "s|^[# ]*CharacterDatabase\.AutoBaseline[[:space:]]*=.*|CharacterDatabase.AutoBaseline = 1|g" "$conf"
 }
 
 case "$1" in
