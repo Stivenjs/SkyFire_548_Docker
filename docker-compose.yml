@@ -33,6 +33,7 @@ services:
       start_period: 30s
 
   db-init:
+    profiles: ["init"]
     build:
       context: .
       dockerfile: Dockerfile
@@ -77,8 +78,6 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
-      db-init:
-        condition: service_completed_successfully
 
     environment:
       MYSQL_HOST: mysql
@@ -113,8 +112,6 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
-      db-init:
-        condition: service_completed_successfully
       authserver:
         condition: service_started
 
@@ -131,7 +128,7 @@ services:
 
     volumes:
       - ./config:/opt/skyfire-server/etc
-      - ./data/server/game-data:/opt/skyfire-server/data
+      - ${GAME_DATA_PATH:-./data/server/game-data}:/opt/skyfire-server/data:ro
       - ./data/server/logs:/opt/skyfire-server/logs
 
     ports:
