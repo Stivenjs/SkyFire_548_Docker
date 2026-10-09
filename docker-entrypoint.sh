@@ -66,6 +66,14 @@ configure_authserver() {
     sed -i -E "s|^[# ]*LogsDir[[:space:]]*=.*|LogsDir = \"${LOGS_DIR}\"|g" "$conf"
     sed -i -E "s|^[# ]*LoginDatabase\.SqlPath[[:space:]]*=.*|LoginDatabase.SqlPath = \"/opt/skyfire-server/sql\"|g" "$conf"
     sed -i -E "s|^[# ]*LoginDatabase\.AutoSetup[[:space:]]*=.*|LoginDatabase.AutoSetup = 1|g" "$conf"
+
+    # Habilitar Authnet (Battle.net) — requerido por el cliente MoP 5.4.8
+    echo "==> Habilitando Authnet (Battle.net) en puerto 1119..."
+    sed -i -E "s|^[# ]*Authnet\.Enabled[[:space:]]*=.*|Authnet.Enabled = 1|g" "$conf"
+    sed -i -E "s|^[# ]*Authnet\.AllowUnverifiedLogin[[:space:]]*=.*|Authnet.AllowUnverifiedLogin = 1|g" "$conf"
+    sed -i -E "s|^[# ]*Authnet\.VerboseLogging[[:space:]]*=.*|Authnet.VerboseLogging = 1|g" "$conf"
+    sed -i -E "s|^[# ]*Authnet\.BindIP[[:space:]]*=.*|Authnet.BindIP = \"0.0.0.0\"|g" "$conf"
+    sed -i -E "s|^[# ]*Authnet\.Port[[:space:]]*=.*|Authnet.Port = 1119|g" "$conf"
 }
 
 configure_worldserver() {
