@@ -180,8 +180,16 @@ if [ "$HAS_CREATURE_TABLE" -eq 0 ]; then
         ls -laR "$CACHE_DIR"
         exit 1
     fi
-else
-    echo "--> [World] Base de datos world ya contiene datos (creature_template detectada). Se mantiene sin cambios."
+fi
+
+# 5.1 Aplicar todas las migraciones acumuladas y recientes (hasta 2026)
+HAS_TRANSPORT_LEGACY=$($MYSQL_CMD -N -s -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'world' AND table_name = 'transport_legacy';")
+if [ "$HAS_TRANSPORT_LEGACY" -eq 0 ]; then
+    echo "--> [World] Aplicando todas las actualizaciones SQL acumuladas (SFDB 24.001 a 26.001+)..."
+    for f in $(find /opt/skyfire-server/sql/old/5.4.8/world/SFDB_release_24.001_to_25.000 /opt/skyfire-server/sql/old/5.4.8/world/SFDB_release_25.000_to_26.001 /opt/skyfire-server/sql/updates/world -type f -name "*.sql" 2>/dev/null | sort); do
+        $MYSQL_CMD world < "$f" 2>/dev/null || true
+    done
+    echo "--> [World] Todas las actualizaciones SQL acumuladas aplicadas exitosamente."
 fi
 
 # 6. Actualizar / Insertar Realm en auth.realmlist
