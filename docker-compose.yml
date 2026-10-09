@@ -72,8 +72,8 @@ services:
     image: skyfire548-server:latest
     container_name: skyfire-extractor
     volumes:
-      - "${CLIENT_PATH:-D:/MoP/MOP-5.4.8.18414-enUS-Repack}:/client"
-      - "./data/server/game-data:/data"
+      - "${CLIENT_PATH:-D:/MoP/MOP-5.4.8.18414-enUS-Repack}:/client:ro"
+      - "${GAME_DATA_PATH:-./data/server/game-data}:/data"
       - extractor_workspace:/workspace
     entrypoint: ["/bin/bash", "-c"]
     command:
@@ -82,57 +82,50 @@ services:
         BINS=/opt/skyfire-server/bin
 
         echo "=========================================="
-        echo "  SkyFire 5.4.8 — Extracción completa"
+        echo "  SkyFire 5.4.8 — Extracción de Datos"
         echo "=========================================="
 
-        # Prepare a writable workspace with symlinks to client data
-        mkdir -p /workspace
-        ln -sfn /client/Data /workspace/Data 2>/dev/null || true
-
-        # ── Step 1: Maps + DBC ──────────────────────
-        if [ -d "/data/maps" ] && [ "$$(ls -A /data/maps 2>/dev/null)" ]; then
-          echo "==> [1/4] maps/ ya existe, saltando mapextractor."
+        # ── Paso 1: Maps y DBC ──────────────────────
+        if [ -d "/data/maps" ] && [ "$$(ls -A /data/maps 2>/dev/null)" ] && [ -d "/data/dbc" ] && [ "$$(ls -A /data/dbc 2>/dev/null)" ]; then
+          echo "==> [1/3] Maps y DBC ya existen en destino. Saltando mapextractor."
         else
-          echo "==> [1/4] Extrayendo Maps y DBC desde el cliente..."
-          cd /workspace
+          echo "==> [1/3] Extrayendo Maps y DBC desde el cliente..."
+          cd /client
           $$BINS/mapextractor -o /data
-          echo "==> [1/4] Maps y DBC extraídos correctamente."
+          echo "==> [1/3] Maps y DBC extraídos correctamente."
         fi
 
-        # ── Step 2: VMap extraction (raw Buildings) ─
-        if [ -d "/data/vmaps" ] && [ "$$(ls -A /data/vmaps 2>/dev/null)" ]; then
-          echo "==> [2/4] vmaps/ ya existe, saltando vmap4extractor + assembler."
+        # ── Paso 2: VMaps 5.3 (vmap4extractor + vmap4assembler) ─
+        if [ -f "/data/vmaps/0000.vmtree" ] && grep -q "VMAP_5.3" "/data/vmaps/0000.vmtree" 2>/dev/null; then
+          echo "==> [2/3] VMaps 5.3 ya están presentes y son compatibles. Saltando extracción de vmaps."
         else
-          echo "==> [2/4] Extrayendo VMaps (datos crudos) desde el cliente..."
-          cd /workspace
-          $$BINS/vmap4extractor
-          echo "==> [2/4] Datos VMap crudos extraídos (Buildings/)."
-
-          # ── Step 3: VMap assembly ───────────────────
-          echo "==> [3/4] Ensamblando VMaps finales..."
+          echo "==> [2/3] Extrayendo y ensamblando VMaps versión 5.3 (esto toma 15-25 min)..."
+          rm -rf /workspace/vmap_build
+          mkdir -p /workspace/vmap_build
+          cd /workspace/vmap_build
+          echo "    -> Extrayendo geometría desde /client/Data..."
+          $$BINS/vmap4extractor -d /client/Data
+          echo "    -> Ensamblando VMaps 5.3 hacia /data/vmaps..."
           mkdir -p /data/vmaps
-          $$BINS/vmap4assembler /workspace/Buildings /data/vmaps
-          echo "==> [3/4] VMaps ensamblados correctamente."
+          $$BINS/vmap4assembler /workspace/vmap_build/Buildings /data/vmaps
+          rm -rf /workspace/vmap_build
+          echo "==> [2/3] ¡VMaps 5.3 ensamblados exitosamente!"
         fi
 
-        # ── Step 4: MMaps generation ────────────────
+        # ── Paso 3: MMaps (si no existen) ───────────
         if [ -d "/data/mmaps" ] && [ "$$(ls -A /data/mmaps 2>/dev/null)" ]; then
-          echo "==> [4/4] mmaps/ ya existe, saltando mmaps_generator."
+          echo "==> [3/3] mmaps/ ya existe en destino. Saltando mmaps_generator."
         else
-          echo "==> [4/4] Generando Movement Maps (esto puede tardar VARIAS HORAS)..."
+          echo "==> [3/3] Generando Movement Maps (mmaps)..."
           mkdir -p /data/mmaps
           cd /data
           $$BINS/mmaps_generator
-          echo "==> [4/4] MMaps generados correctamente."
+          echo "==> [3/3] MMaps generados correctamente."
         fi
 
         echo "=========================================="
-        echo "  ¡Extracción completa finalizada!"
-        echo "  Archivos en: data/server/game-data/"
-        echo "    - dbc/   : Data files"
-        echo "    - maps/  : World maps"
-        echo "    - vmaps/ : Visual maps"
-        echo "    - mmaps/ : Movement maps"
+        echo "  ¡Proceso de datos completado!"
+        echo "  Archivos listos en tu carpeta de mapas."
         echo "=========================================="
 
   authserver:

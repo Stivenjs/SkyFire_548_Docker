@@ -94,6 +94,20 @@ configure_worldserver() {
     sed -i -E "s|^[# ]*CharacterDatabase\.AutoSetup[[:space:]]*=.*|CharacterDatabase.AutoSetup = 1|g" "$conf"
     sed -i -E "s|^[# ]*WorldDatabase\.AutoBaseline[[:space:]]*=.*|WorldDatabase.AutoBaseline = 0|g" "$conf"
     sed -i -E "s|^[# ]*CharacterDatabase\.AutoBaseline[[:space:]]*=.*|CharacterDatabase.AutoBaseline = 0|g" "$conf"
+
+    # Detección inteligente de VMaps:
+    # Si existen VMaps compatibles (VMAP_5.3), habilitar colisiones completas (LOS y Height).
+    # Si no existen o son de versión anterior (ej: VMAP_4.3), deshabilitar temporalmente para evitar crash.
+    if [ -f "$DATA_DIR/vmaps/0000.vmtree" ] && grep -q "VMAP_5.3" "$DATA_DIR/vmaps/0000.vmtree" 2>/dev/null; then
+        echo "==> VMaps 5.3 detectados. Habilitando soporte completo de colisiones (LOS y Height)..."
+        VMAP_ENABLE="1"
+    else
+        echo "==> AVISO: VMaps 5.3 no detectados en $DATA_DIR/vmaps. Deshabilitando temporalmente para permitir arranque..."
+        VMAP_ENABLE="0"
+    fi
+    sed -i -E "s|^[# ]*vmap\.enableLOS[[:space:]]*=.*|vmap.enableLOS = ${VMAP_ENABLE}|g" "$conf"
+    sed -i -E "s|^[# ]*vmap\.enableHeight[[:space:]]*=.*|vmap.enableHeight = ${VMAP_ENABLE}|g" "$conf"
+    sed -i -E "s|^[# ]*vmap\.enableIndoorCheck[[:space:]]*=.*|vmap.enableIndoorCheck = ${VMAP_ENABLE}|g" "$conf"
 }
 
 case "$1" in
