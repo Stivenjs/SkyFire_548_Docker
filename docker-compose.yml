@@ -157,6 +157,7 @@ services:
     volumes:
       - ./config:/opt/skyfire-server/etc
       - ./data/server/logs:/opt/skyfire-server/logs
+      - ./docker-entrypoint.sh:/usr/local/bin/docker-entrypoint.sh:ro
 
     ports:
       - "3724:3724"
@@ -198,6 +199,7 @@ services:
       - ./config:/opt/skyfire-server/etc
       - ${GAME_DATA_PATH:-./data/server/game-data}:/opt/skyfire-server/data:ro
       - ./data/server/logs:/opt/skyfire-server/logs
+      - ./docker-entrypoint.sh:/usr/local/bin/docker-entrypoint.sh:ro
 
     ports:
       - "8085:8085"
