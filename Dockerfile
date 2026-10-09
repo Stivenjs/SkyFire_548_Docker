@@ -70,7 +70,7 @@ RUN git clone \
 # Configure, compile and install.
 # PCH is enabled by default: do not pass -DNOPCH=1.
 RUN cmake -S . -B build/docker -G Ninja \
-      -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+      -DCMAKE_BUILD_TYPE=Release \
       -DCMAKE_INSTALL_PREFIX=/opt/skyfire-server \
       -DCMAKE_C_COMPILER=gcc-14 \
       -DCMAKE_CXX_COMPILER=g++-14 \
@@ -98,15 +98,20 @@ RUN apt-get update && \
       libmariadb3 \
       libbz2-1.0 \
       libreadline8t64 \
-      zlib1g && \
+      zlib1g \
+      netcat-openbsd \
+      default-mysql-client \
+      curl \
+      unzip && \
     rm -rf /var/lib/apt/lists/*
 
-# Copy the installed server and custom OpenSSL runtime.
+# Copy the installed server, custom OpenSSL runtime and SQL migrations/base files.
 COPY --from=builder /opt/skyfire-server /opt/skyfire-server
 COPY --from=builder /opt/openssl-4.0.1 /opt/openssl-4.0.1
-
-# Keep the SQL update files available for server database setup.
 COPY --from=builder /src/sql /opt/skyfire-server/sql
+
+# Preserve default configurations so volume mounts over /opt/skyfire-server/etc don't hide them
+RUN cp -r /opt/skyfire-server/etc /opt/skyfire-server/etc.default 2>/dev/null || true
 
 # Register OpenSSL libraries and locate the legacy provider.
 RUN set -eux; \
@@ -124,6 +129,9 @@ ENV OPENSSL_MODULES=/opt/openssl-4.0.1/ossl-modules
 
 WORKDIR /opt/skyfire-server
 
-# Keep the image easy to inspect.
-# We will configure the actual server startup in Docker Compose.
-CMD ["/bin/bash"]
+# Add entrypoint for automated configuration and startup
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
+CMD ["worldserver"]

@@ -1,0 +1,19 @@
+# Entorno y credenciales
+.env
+
+# Datos del servidor y MySQL
+data/mysql/
+data/server/logs/
+data/server/game-data/
+
+# Archivos y carpetas SQL / Descargas (se autodescargan con Docker)
+database/
+*.sql
+*.zip
+*.tar.gz
+
+# Configuraciones generadas
+config/*.conf
+
+# Logs
+*.log

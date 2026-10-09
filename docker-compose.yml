@@ -1,0 +1,147 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: skyfire-mysql
+    restart: unless-stopped
+
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in .env}
+      MYSQL_DATABASE: auth
+      MYSQL_USER: ${SKYFIRE_DB_USER:-skyfire}
+      MYSQL_PASSWORD: ${SKYFIRE_DB_PASSWORD:?Set SKYFIRE_DB_PASSWORD in .env}
+
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+
+    networks:
+      - skyfire
+
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$${MYSQL_ROOT_PASSWORD}\" --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 25
+      start_period: 30s
+
+  db-init:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: skyfire548-server:latest
+    container_name: skyfire-db-init
+    restart: "no"
+
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in .env}
+      SKYFIRE_DB_USER: ${SKYFIRE_DB_USER:-skyfire}
+      SKYFIRE_DB_PASSWORD: ${SKYFIRE_DB_PASSWORD:?Set SKYFIRE_DB_PASSWORD in .env}
+      REALM_NAME: ${REALM_NAME:-SkyFire 5.4.8}
+      REALM_ADDRESS: ${REALM_ADDRESS:-127.0.0.1}
+      REALM_PORT: ${REALM_PORT:-8085}
+      SKYFIRE_REF: ${SKYFIRE_REF:-main}
+      SFDB_DOWNLOAD_URL: ${SFDB_DOWNLOAD_URL:-}
+
+    volumes:
+      - ./scripts:/scripts:ro
+      - db_cache:/database_cache
+      - ./database:/local_sql:ro
+
+    networks:
+      - skyfire
+
+    entrypoint: ["/bin/bash", "/scripts/db-init.sh"]
+
+  authserver:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: skyfire548-server:latest
+    container_name: skyfire-authserver
+    restart: unless-stopped
+
+    depends_on:
+      mysql:
+        condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
+
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      SKYFIRE_DB_USER: ${SKYFIRE_DB_USER:-skyfire}
+      SKYFIRE_DB_PASSWORD: ${SKYFIRE_DB_PASSWORD:?Set SKYFIRE_DB_PASSWORD in .env}
+      AUTH_DB: auth
+
+    volumes:
+      - ./config:/opt/skyfire-server/etc
+      - ./data/server/logs:/opt/skyfire-server/logs
+
+    ports:
+      - "3724:3724"
+
+    networks:
+      - skyfire
+
+    command: ["authserver"]
+
+  worldserver:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: skyfire548-server:latest
+    container_name: skyfire-worldserver
+    restart: unless-stopped
+
+    stdin_open: true
+    tty: true
+
+    depends_on:
+      mysql:
+        condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
+      authserver:
+        condition: service_started
+
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      SKYFIRE_DB_USER: ${SKYFIRE_DB_USER:-skyfire}
+      SKYFIRE_DB_PASSWORD: ${SKYFIRE_DB_PASSWORD:?Set SKYFIRE_DB_PASSWORD in .env}
+      AUTH_DB: auth
+      WORLD_DB: world
+      CHARACTERS_DB: characters
+      DATA_DIR: /opt/skyfire-server/data
+      LOGS_DIR: /opt/skyfire-server/logs
+
+    volumes:
+      - ./config:/opt/skyfire-server/etc
+      - ./data/server/game-data:/opt/skyfire-server/data
+      - ./data/server/logs:/opt/skyfire-server/logs
+
+    ports:
+      - "8085:8085"
+
+    networks:
+      - skyfire
+
+    command: ["worldserver"]
+
+networks:
+  skyfire:
+    name: skyfire-network
+
+volumes:
+  mysql_data:
+    name: skyfire-mysql-data
+  db_cache:
+    name: skyfire-db-cache
