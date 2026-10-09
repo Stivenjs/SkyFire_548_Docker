@@ -67,6 +67,21 @@ services:
 
     entrypoint: ["/bin/bash", "/scripts/db-init.sh"]
 
+  extractor:
+    profiles: ["tools"]
+    image: skyfire548-server:latest
+    container_name: skyfire-extractor
+    volumes:
+      - "${CLIENT_PATH:-D:/MoP/MOP-5.4.8.18414-enUS-Repack}:/client:ro"
+      - "./data/server/game-data:/data"
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        echo "==> Extrayendo DBC y Maps desde los archivos MPQ del cliente..."
+        cd /client
+        /opt/skyfire-server/bin/mapextractor -o /data
+        echo "==> Proceso de extracción finalizado en data/server/game-data."
+
   authserver:
     build:
       context: .
