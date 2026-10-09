@@ -16,19 +16,35 @@ SKYFIRE_REF="${SKYFIRE_REF:-main}"
 CACHE_DIR="/database_cache"
 mkdir -p "$CACHE_DIR"
 
-MYSQL_CMD="mysql -h $MYSQL_HOST -P $MYSQL_PORT -u $MYSQL_USER -p$MYSQL_PASS"
+# Flags para compatibilidad total con MySQL 8.4 y caching_sha2_password
+MYSQL_OPTS="--get-server-public-key"
+MYSQL_CMD="mysql -h $MYSQL_HOST -P $MYSQL_PORT -u $MYSQL_USER -p$MYSQL_PASS $MYSQL_OPTS"
 
 echo "=========================================================="
 echo "    [SkyFire DB-Init] Automatización de Base de Datos    "
 echo "=========================================================="
 
-# 1. Esperar a MySQL
-echo "==> Conectando con MySQL en $MYSQL_HOST:$MYSQL_PORT..."
-until $MYSQL_CMD -e "SELECT 1;" >/dev/null 2>&1; do
-    echo "    Esperando disponibilidad de MySQL..."
+# 1. Esperar a MySQL (Red y Autenticación)
+echo "==> Verificando disponibilidad de red en $MYSQL_HOST:$MYSQL_PORT..."
+until nc -z "$MYSQL_HOST" "$MYSQL_PORT"; do
+    echo "    Esperando puerto MySQL..."
+    sleep 2
+done
+echo "==> Puerto disponible. Autenticando con MySQL..."
+
+TRIES=0
+while true; do
+    ERR_OUTPUT=$($MYSQL_CMD -e "SELECT 1;" 2>&1) && break
+    TRIES=$((TRIES + 1))
+    echo "    [Intento $TRIES] MySQL respondió con error:"
+    echo "    $ERR_OUTPUT"
+    if [ "$TRIES" -ge 30 ]; then
+        echo "ERROR: No se pudo conectar a MySQL tras $TRIES intentos."
+        exit 1
+    fi
     sleep 3
 done
-echo "==> Conexión a MySQL confirmada."
+echo "==> Conexión a MySQL confirmada exitosamente."
 
 # 2. Asegurar creación de bases de datos y permisos de usuario
 echo "==> Verificando existencia de bases de datos (auth, characters, world)..."

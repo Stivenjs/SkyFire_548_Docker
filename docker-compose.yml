@@ -10,6 +10,12 @@ services:
       MYSQL_USER: ${SKYFIRE_DB_USER:-skyfire}
       MYSQL_PASSWORD: ${SKYFIRE_DB_PASSWORD:?Set SKYFIRE_DB_PASSWORD in .env}
 
+    command:
+      - mysqld
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --mysql-native-password=ON
+
     volumes:
       - mysql_data:/var/lib/mysql
 
