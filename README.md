@@ -1,4 +1,4 @@
-# SkyFire 5.4.8 Docker (100% Automatizado)
+# SkyFire 5.4.8 Docker 
 
 Entorno completo y contenerizado con **Docker Compose** para desplegar un servidor **World of Warcraft: Mists of Pandaria (5.4.8 Build 18414)** basado en [Project SkyFire](https://github.com/ProjectSkyfire/SkyFire_548).
 
