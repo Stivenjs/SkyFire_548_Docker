@@ -44,18 +44,38 @@ Parámetros clave en [.env](file:///c:/Users/usr/Desktop/Code/SkyFire_548_Docker
 
 ### 2. Conectar los Datos del Juego (DBC, Maps, VMaps, MMaps)
 
-Tienes dos métodos para proveer los mapas a `worldserver`:
+`worldserver` requiere las carpetas de datos extraídos (`dbc`, `maps`, `vmaps`, `mmaps`). Tienes tres alternativas según tu caso:
 
-#### Método A: Enlazar tu carpeta existente (Recomendado - No duplica disco)
-Si ya tienes un repack o los mapas extraídos en otra ruta (por ejemplo en el disco `D:`), descomenta y define la variable `GAME_DATA_PATH` en tu archivo [.env](file:///c:/Users/usr/Desktop/Code/SkyFire_548_Docker/.env):
+#### Método A: Enlazar carpeta externa ya extraída (Recomendado si ya los tienes)
+Si ya tienes los mapas extraídos en otra ruta o disco (por ejemplo `D:/MoP/Server_Data`), define la variable `GAME_DATA_PATH` en tu archivo [.env](file:///c:/Users/usr/Desktop/Code/SkyFire_548_Docker/.env):
 
 ```ini
-GAME_DATA_PATH=D:/MoP/MOP-5.4.8.18414-enUS-Repack/data
+GAME_DATA_PATH=D:/MoP/Server_Data
 ```
-*(Docker montará esa carpeta directamente en modo solo lectura `ro` sin copiar nada)*.
+*(Docker montará esa carpeta directamente en `/opt/skyfire-server/data` en modo solo lectura `ro`, sin duplicar gigabytes en tu disco).*
 
-#### Método B: Copiar manualmente en el proyecto
-Coloca las carpetas extraídas dentro de la estructura local:
+---
+
+#### Método B: Extraer automáticamente desde el cliente del juego (Si solo tienes el WoW)
+Si únicamente tienes la carpeta del cliente de WoW 5.4.8 (con los archivos `.MPQ`), puedes usar el contenedor integrado para extraer automáticamente los mapas (`mapextractor`, `vmap4extractor`, `vmap4assembler`, `mmaps_generator`):
+
+1. Configura la ruta a tu cliente de WoW en el archivo [.env](file:///c:/Users/usr/Desktop/Code/SkyFire_548_Docker/.env):
+   ```ini
+   CLIENT_PATH=D:/MoP/MOP-5.4.8.18414-enUS-Repack
+   ```
+
+2. Ejecuta el servicio extractor:
+   ```bash
+   docker compose --profile tools run --rm extractor
+   ```
+
+> [!NOTE]
+> Los datos se guardarán automáticamente en `data/server/game-data/`. La generación de `mmaps` puede demorar varias horas debido al cálculo exhaustivo de rutas y mallas de navegación.
+
+---
+
+#### Método C: Copiar manualmente en el proyecto
+Coloca las carpetas extraídas dentro de la estructura local del proyecto:
 
 ```
 data/
@@ -70,6 +90,10 @@ data/
 ---
 
 ### 3. Puesta en Marcha
+
+> [!TIP]
+> **¿Cuándo se compila la imagen Docker?**
+> Docker Compose compila automáticamente la imagen a partir del [Dockerfile](file:///c:/Users/usr/Desktop/Code/SkyFire_548_Docker/Dockerfile) la primera vez que ejecutas `docker compose up`. No necesitas ejecutar comandos de `docker build` manuales. Si en el futuro modificas el Dockerfile y quieres forzar una recompilación, puedes ejecutar `docker compose build` o `docker compose up -d --build`.
 
 #### Paso A: Primera Ejecución (Inicializar Base de Datos)
 La **primera vez** que levantes el servidor (o si borraste los volúmenes), ejecuta el perfil `init` para que descargue e importe la base de datos automáticamente:
