@@ -154,7 +154,6 @@ services:
 
     ports:
       - "3724:3724"
-      - "1119:1119"
 
     networks:
       - skyfire
