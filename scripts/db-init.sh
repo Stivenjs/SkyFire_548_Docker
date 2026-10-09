@@ -119,8 +119,8 @@ if [ "$HAS_CREATURE_TABLE" -eq 0 ]; then
     if [ -n "$WORLD_SQL" ] && [ -f "$WORLD_SQL" ]; then
         echo "--> [World] Se encontró dump SFDB local: $WORLD_SQL. Importando..."
     else
-        # Buscar en cache buscando exclusivamente patrones de SFDB/world
-        WORLD_SQL=$(find "$CACHE_DIR" -maxdepth 1 -type f \( -iname "*SFDB*.sql" -o -iname "*world*.sql" \) ! -iname "*character*" ! -iname "*auth*" -print -quit 2>/dev/null)
+        # Buscar en cache buscando exclusivamente patrones de SFDB/world recursivamente
+        WORLD_SQL=$(find "$CACHE_DIR" -type f \( -iname "*SFDB*.sql" -o -iname "*world*.sql" \) ! -iname "*character*" ! -iname "*auth*" -print -quit 2>/dev/null)
         if [ -z "$WORLD_SQL" ]; then
             echo "--> [World] No se encontró SFDB local. Descargando release oficial de SFDB desde Codeberg..."
             
@@ -142,7 +142,7 @@ if [ "$HAS_CREATURE_TABLE" -eq 0 ]; then
             unzip -q -o "$ZIP_PATH" -d "$CACHE_DIR"
             rm -f "$ZIP_PATH"
             
-            WORLD_SQL=$(find "$CACHE_DIR" -maxdepth 1 -type f \( -iname "*SFDB*.sql" -o -iname "*world*.sql" \) ! -iname "*character*" ! -iname "*auth*" -print -quit 2>/dev/null)
+            WORLD_SQL=$(find "$CACHE_DIR" -type f \( -iname "*SFDB*.sql" -o -iname "*world*.sql" -o -iname "*.sql" \) ! -iname "*character*" ! -iname "*auth*" -print -quit 2>/dev/null)
         fi
     fi
 
@@ -152,6 +152,8 @@ if [ "$HAS_CREATURE_TABLE" -eq 0 ]; then
         echo "--> [World] SFDB importado exitosamente."
     else
         echo "ERROR: No se pudo localizar el archivo SQL de la base de datos world (SFDB)."
+        echo "Contenido en $CACHE_DIR:"
+        ls -laR "$CACHE_DIR"
         exit 1
     fi
 else
