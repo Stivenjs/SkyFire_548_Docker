@@ -105,10 +105,11 @@ RUN apt-get update && \
       unzip && \
     rm -rf /var/lib/apt/lists/*
 
-# Copy the installed server, custom OpenSSL runtime and SQL migrations/base files.
+# Copy the installed server, custom OpenSSL runtime, MySQL client libraries and SQL migrations/base files.
 COPY --from=builder /opt/skyfire-server /opt/skyfire-server
 COPY --from=builder /opt/openssl-4.0.1 /opt/openssl-4.0.1
 COPY --from=builder /src/sql /opt/skyfire-server/sql
+COPY --from=builder /usr/lib/x86_64-linux-gnu/libmysqlclient* /usr/lib/x86_64-linux-gnu/
 
 # Preserve default configurations so volume mounts over /opt/skyfire-server/etc don't hide them
 RUN cp -r /opt/skyfire-server/etc /opt/skyfire-server/etc.default 2>/dev/null || true

@@ -101,11 +101,25 @@ case "$1" in
         ;;
     worldserver)
         configure_worldserver
+        # Detección inteligente si dbc o maps están en una subcarpeta (ej: Data/, server/data/, etc.)
+        if [ ! -d "$DATA_DIR/dbc" ] && [ ! -d "$DATA_DIR/maps" ]; then
+            NESTED_DIR=$(find "$DATA_DIR" -maxdepth 2 -type d \( -name "dbc" -o -name "maps" \) -print -quit 2>/dev/null)
+            if [ -n "$NESTED_DIR" ]; then
+                PARENT_DIR=$(dirname "$NESTED_DIR")
+                echo "==> Detectados datos de mapas en subcarpeta: $PARENT_DIR. Enlazando..."
+                for sub in dbc maps vmaps mmaps; do
+                    if [ -d "$PARENT_DIR/$sub" ] && [ ! -e "$DATA_DIR/$sub" ]; then
+                        ln -s "$PARENT_DIR/$sub" "$DATA_DIR/$sub"
+                    fi
+                done
+            fi
+        fi
+
         if [ ! -d "$DATA_DIR/dbc" ] && [ ! -d "$DATA_DIR/maps" ]; then
             echo "------------------------------------------------------------------"
             echo "[ADVERTENCIA] No se encontraron carpetas 'dbc' o 'maps' en $DATA_DIR"
-            echo "Recuerda extraer del cliente WoW 5.4.8 las carpetas dbc, maps, vmaps y mmaps"
-            echo "y colocarlas en data/server/game-data en el host."
+            echo "Contenido detectado actualmente en $DATA_DIR:"
+            ls -la "$DATA_DIR" 2>/dev/null || echo "(directorio vacío o inaccesible)"
             echo "------------------------------------------------------------------"
         fi
         echo "==> Iniciando SkyFire WorldServer..."
