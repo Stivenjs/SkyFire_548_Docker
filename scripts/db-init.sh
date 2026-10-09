@@ -61,9 +61,9 @@ FLUSH PRIVILEGES;
 "
 
 # 3. Inicializar Auth Database
-AUTH_TABLE_COUNT=$($MYSQL_CMD -N -s -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'auth';")
-if [ "$AUTH_TABLE_COUNT" -eq 0 ]; then
-    echo "--> [Auth] Base de datos vacía. Obteniendo auth_database.sql..."
+HAS_ACCOUNT_TABLE=$($MYSQL_CMD -N -s -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'auth' AND table_name = 'account';")
+if [ "$HAS_ACCOUNT_TABLE" -eq 0 ]; then
+    echo "--> [Auth] No se detectó tabla 'account'. Obteniendo auth_database.sql..."
     AUTH_SQL="$CACHE_DIR/auth_database.sql"
     if [ ! -f "$AUTH_SQL" ]; then
         if [ -f "/opt/skyfire-server/sql/base/auth_database.sql" ]; then
@@ -77,13 +77,13 @@ if [ "$AUTH_TABLE_COUNT" -eq 0 ]; then
     $MYSQL_CMD auth < "$AUTH_SQL"
     echo "--> [Auth] auth_database.sql importado con éxito."
 else
-    echo "--> [Auth] Ya contiene $AUTH_TABLE_COUNT tablas. Se mantiene sin cambios."
+    echo "--> [Auth] Tablas base detectadas. Se mantiene sin cambios."
 fi
 
 # 4. Inicializar Characters Database
-CHARS_TABLE_COUNT=$($MYSQL_CMD -N -s -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'characters';")
-if [ "$CHARS_TABLE_COUNT" -eq 0 ]; then
-    echo "--> [Characters] Base de datos vacía. Obteniendo characters_database.sql..."
+HAS_CHAR_TABLE=$($MYSQL_CMD -N -s -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'characters' AND table_name = 'characters';")
+if [ "$HAS_CHAR_TABLE" -eq 0 ]; then
+    echo "--> [Characters] No se detectó tabla 'characters'. Obteniendo characters_database.sql..."
     CHARS_SQL="$CACHE_DIR/characters_database.sql"
     if [ ! -f "$CHARS_SQL" ]; then
         if [ -f "/opt/skyfire-server/sql/base/characters_database.sql" ]; then
@@ -97,27 +97,33 @@ if [ "$CHARS_TABLE_COUNT" -eq 0 ]; then
     $MYSQL_CMD characters < "$CHARS_SQL"
     echo "--> [Characters] characters_database.sql importado con éxito."
 else
-    echo "--> [Characters] Ya contiene $CHARS_TABLE_COUNT tablas. Se mantiene sin cambios."
+    echo "--> [Characters] Tablas base detectadas. Se mantiene sin cambios."
 fi
 
 # 5. Inicializar World Database (SFDB)
-WORLD_TABLE_COUNT=$($MYSQL_CMD -N -s -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'world';")
-if [ "$WORLD_TABLE_COUNT" -eq 0 ]; then
-    echo "--> [World] Base de datos 'world' vacía. Verificando dump de SFDB..."
+HAS_CREATURE_TABLE=$($MYSQL_CMD -N -s -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'world' AND table_name = 'creature_template';")
+if [ "$HAS_CREATURE_TABLE" -eq 0 ]; then
+    echo "--> [World] No se detectó tabla 'creature_template'. Recreando esquema 'world' e importando SFDB..."
     
-    # Buscar si existe un archivo .sql local en /local_sql
-    LOCAL_WORLD_SQL=$(find /local_sql -maxdepth 2 -name "*.sql" -print -quit 2>/dev/null)
+    # Limpiar tablas parciales o incorrectas en world
+    $MYSQL_CMD -e "
+    DROP DATABASE IF EXISTS \`world\`;
+    CREATE DATABASE \`world\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+    GRANT ALL PRIVILEGES ON \`world\`.* TO '${SKYFIRE_USER}'@'%';
+    FLUSH PRIVILEGES;
+    "
+
+    # Buscar archivo SFDB local (ej. SFDB_full_548_*.sql)
+    WORLD_SQL=$(find /local_sql -type f \( -iname "*SFDB*.sql" -o -iname "*world*.sql" \) ! -iname "*character*" ! -iname "*auth*" ! -iname "*01-database*" -print -quit 2>/dev/null)
     
-    if [ -n "$LOCAL_WORLD_SQL" ] && [ -f "$LOCAL_WORLD_SQL" ]; then
-        echo "--> [World] Se encontró archivo local: $LOCAL_WORLD_SQL. Importando..."
-        $MYSQL_CMD world < "$LOCAL_WORLD_SQL"
+    if [ -n "$WORLD_SQL" ] && [ -f "$WORLD_SQL" ]; then
+        echo "--> [World] Se encontró dump SFDB local: $WORLD_SQL. Importando..."
     else
-        # Buscar en cache o descargar
-        WORLD_SQL=$(find "$CACHE_DIR" -maxdepth 1 -name "*.sql" -print -quit 2>/dev/null)
+        # Buscar en cache buscando exclusivamente patrones de SFDB/world
+        WORLD_SQL=$(find "$CACHE_DIR" -maxdepth 1 -type f \( -iname "*SFDB*.sql" -o -iname "*world*.sql" \) ! -iname "*character*" ! -iname "*auth*" -print -quit 2>/dev/null)
         if [ -z "$WORLD_SQL" ]; then
-            echo "--> [World] No se encontró SQL local. Obteniendo release de SFDB desde Codeberg..."
+            echo "--> [World] No se encontró SFDB local. Descargando release oficial de SFDB desde Codeberg..."
             
-            # Obtener URL del release (por env o API)
             DOWNLOAD_URL="${SFDB_DOWNLOAD_URL}"
             if [ -z "$DOWNLOAD_URL" ]; then
                 echo "    Consultando API de Codeberg para obtener el release más reciente..."
@@ -136,20 +142,20 @@ if [ "$WORLD_TABLE_COUNT" -eq 0 ]; then
             unzip -q -o "$ZIP_PATH" -d "$CACHE_DIR"
             rm -f "$ZIP_PATH"
             
-            WORLD_SQL=$(find "$CACHE_DIR" -maxdepth 1 -name "*.sql" -print -quit 2>/dev/null)
-        fi
-
-        if [ -n "$WORLD_SQL" ] && [ -f "$WORLD_SQL" ]; then
-            echo "--> [World] Importando $WORLD_SQL en base de datos world (esto puede tardar unos minutos)..."
-            $MYSQL_CMD world < "$WORLD_SQL"
-            echo "--> [World] SFDB importado exitosamente."
-        else
-            echo "ERROR: No se pudo localizar el archivo SQL de la base de datos world."
-            exit 1
+            WORLD_SQL=$(find "$CACHE_DIR" -maxdepth 1 -type f \( -iname "*SFDB*.sql" -o -iname "*world*.sql" \) ! -iname "*character*" ! -iname "*auth*" -print -quit 2>/dev/null)
         fi
     fi
+
+    if [ -n "$WORLD_SQL" ] && [ -f "$WORLD_SQL" ]; then
+        echo "--> [World] Importando $WORLD_SQL en base de datos world (esto puede tardar unos minutos)..."
+        $MYSQL_CMD world < "$WORLD_SQL"
+        echo "--> [World] SFDB importado exitosamente."
+    else
+        echo "ERROR: No se pudo localizar el archivo SQL de la base de datos world (SFDB)."
+        exit 1
+    fi
 else
-    echo "--> [World] Ya contiene $WORLD_TABLE_COUNT tablas. Se mantiene sin cambios."
+    echo "--> [World] Base de datos world ya contiene datos (creature_template detectada). Se mantiene sin cambios."
 fi
 
 # 6. Actualizar / Insertar Realm en auth.realmlist
