@@ -96,12 +96,29 @@ configure_worldserver() {
     sed -i -E "s|^[# ]*CharacterDatabaseInfo[[:space:]]*=.*|CharacterDatabaseInfo = \"${MYSQL_HOST};${MYSQL_PORT};${SKYFIRE_DB_USER};${SKYFIRE_DB_PASSWORD};${CHARACTERS_DB}\"|g" "$conf"
     sed -i -E "s|^[# ]*DataDir[[:space:]]*=.*|DataDir = \"${DATA_DIR}\"|g" "$conf"
     sed -i -E "s|^[# ]*LogsDir[[:space:]]*=.*|LogsDir = \"${LOGS_DIR}\"|g" "$conf"
-    sed -i -E "s|^[# ]*WorldDatabase\.SqlPath[[:space:]]*=.*|WorldDatabase.SqlPath = \"/opt/skyfire-server/sql\"|g" "$conf"
-    sed -i -E "s|^[# ]*CharacterDatabase\.SqlPath[[:space:]]*=.*|CharacterDatabase.SqlPath = \"/opt/skyfire-server/sql\"|g" "$conf"
-    sed -i -E "s|^[# ]*WorldDatabase\.AutoSetup[[:space:]]*=.*|WorldDatabase.AutoSetup = 1|g" "$conf"
-    sed -i -E "s|^[# ]*CharacterDatabase\.AutoSetup[[:space:]]*=.*|CharacterDatabase.AutoSetup = 1|g" "$conf"
-    sed -i -E "s|^[# ]*WorldDatabase\.AutoBaseline[[:space:]]*=.*|WorldDatabase.AutoBaseline = 0|g" "$conf"
-    sed -i -E "s|^[# ]*CharacterDatabase\.AutoBaseline[[:space:]]*=.*|CharacterDatabase.AutoBaseline = 0|g" "$conf"
+
+    # Función para establecer una opción en el conf: reemplaza si existe, agrega si no.
+    # Necesario porque .conf.dist antiguos no incluyen opciones nuevas como AutoBaseline.
+    set_or_add() {
+        local key="$1" value="$2" file="$3"
+        local escaped_key
+        escaped_key=$(echo "$key" | sed 's/\./\\./g')
+        if grep -qE "^[# ]*${escaped_key}[[:space:]]*=" "$file"; then
+            sed -i -E "s|^[# ]*${escaped_key}[[:space:]]*=.*|${key} = ${value}|g" "$file"
+        else
+            echo "${key} = ${value}" >> "$file"
+        fi
+    }
+
+    set_or_add "WorldDatabase.SqlPath"       '"/opt/skyfire-server/sql"' "$conf"
+    set_or_add "CharacterDatabase.SqlPath"   '"/opt/skyfire-server/sql"' "$conf"
+    set_or_add "WorldDatabase.AutoSetup"     "1" "$conf"
+    set_or_add "CharacterDatabase.AutoSetup" "1" "$conf"
+    # AutoBaseline = 1: permite al worldserver crear su propia tabla de tracking
+    # y registrar todos los updates como ya aplicados cuando la BD está pre-poblada (SFDB).
+    # Esto evita el error "update tracking table is missing on a non-empty schema".
+    set_or_add "WorldDatabase.AutoBaseline"     "1" "$conf"
+    set_or_add "CharacterDatabase.AutoBaseline" "1" "$conf"
 
     # Detección inteligente de VMaps:
     # Si existen VMaps compatibles (VMAP_5.3), habilitar colisiones completas (LOS y Height).
@@ -147,6 +164,7 @@ case "$1" in
             ls -la "$DATA_DIR" 2>/dev/null || echo "(directorio vacío o inaccesible)"
             echo "------------------------------------------------------------------"
         fi
+
         echo "==> Iniciando SkyFire WorldServer..."
         exec /opt/skyfire-server/bin/worldserver -c "$CONFIG_DIR/worldserver.conf"
         ;;

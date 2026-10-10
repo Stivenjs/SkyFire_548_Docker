@@ -91,26 +91,40 @@ data/
 
 ### 3. Puesta en Marcha
 
-> [!TIP]
-> **¿Cuándo se compila la imagen Docker?**
-> Docker Compose compila automáticamente la imagen a partir del [Dockerfile](file:///c:/Users/usr/Desktop/Code/SkyFire_548_Docker/Dockerfile) la primera vez que ejecutas `docker compose up`. No necesitas ejecutar comandos de `docker build` manuales. Si en el futuro modificas el Dockerfile y quieres forzar una recompilación, puedes ejecutar `docker compose build` o `docker compose up -d --build`.
+> [!IMPORTANT]
+> Sigue los pasos **en orden**. El Paso A (build) es obligatorio antes de cualquier otro comando, ya que todos los servicios dependen de la imagen compilada.
 
-#### Paso A: Primera Ejecución (Inicializar Base de Datos)
-La **primera vez** que levantes el servidor (o si borraste los volúmenes), ejecuta el perfil `init` para que descargue e importe la base de datos automáticamente:
+#### Paso A: Compilar la Imagen Docker (Obligatorio la primera vez)
+Esto compila SkyFire 548 desde código fuente y crea la imagen `skyfire548-server:latest`. Este proceso tarda varios minutos pero solo se ejecuta una vez:
 
 ```bash
-docker compose --profile init up -d
+docker compose build
 ```
 
-Puedes seguir el progreso de descarga e importación de la base de datos en tiempo real:
+> [!NOTE]
+> Si en el futuro modificas el Dockerfile y quieres forzar una recompilación, ejecuta `docker compose build --no-cache`.
+
+---
+
+#### Paso B: Inicializar la Base de Datos (Primera vez o tras borrar volúmenes)
+Con la imagen ya construida, ejecuta el perfil `init` para descargar e importar automáticamente las bases de datos (`auth`, `characters`, `world`/SFDB):
+
+```bash
+docker compose --profile init up db-init
+```
+
+Esto levantará MySQL, esperará a que esté listo, y ejecutará toda la inicialización de forma automática. Puedes seguir el progreso en tiempo real:
 
 ```bash
 docker compose logs -f db-init
 ```
 
+> [!TIP]
+> Espera a que `db-init` termine completamente (verás `Proceso completado exitosamente`) antes de continuar al siguiente paso.
+
 ---
 
-#### Paso B: Uso Diario (Arranque Instantáneo)
+#### Paso C: Uso Diario (Arranque del Servidor)
 Una vez que la base de datos ya está inicializada, para jugar día a día solo necesitas ejecutar:
 
 ```bash
