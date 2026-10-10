@@ -113,9 +113,21 @@ def create_account(username: str, password: str, gmlevel: int = 0) -> bool:
     DELETE FROM account_access WHERE id = @acc_id;
     """
 
+    # Mapeo de roles RBAC en SkyFire / TrinityCore (192 = Admin, 193 = GM, 194 = Mod)
+    rbac_roles = {
+        1: 194,  # Moderator
+        2: 193,  # Gamemaster
+        3: 192,  # Administrator
+        4: 192,  # Administrator (GM Supremo)
+    }
+    target_gmlevel = min(gmlevel, 3)
+
     if gmlevel > 0:
+        rbac_role = rbac_roles.get(gmlevel, 192)
         sql += f"""
-    INSERT INTO account_access (id, gmlevel, RealmID) VALUES (@acc_id, {gmlevel}, -1);
+    INSERT INTO account_access (id, gmlevel, RealmID) VALUES (@acc_id, {target_gmlevel}, -1);
+    DELETE FROM rbac_account_permissions WHERE accountId = @acc_id;
+    INSERT INTO rbac_account_permissions (accountId, permissionId, granted, realmId) VALUES (@acc_id, {rbac_role}, 1, -1);
     """
 
     sql += """
@@ -124,6 +136,7 @@ def create_account(username: str, password: str, gmlevel: int = 0) -> bool:
     if gmlevel > 0:
         sql += """
     SELECT id, gmlevel, RealmID FROM account_access WHERE id = @acc_id;
+    SELECT * FROM rbac_account_permissions WHERE accountId = @acc_id;
     """
 
     cmd = [
