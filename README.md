@@ -64,10 +64,13 @@ Si únicamente tienes la carpeta del cliente de WoW 5.4.8 (con los archivos `.MP
    CLIENT_PATH=D:/MoP/MOP-5.4.8.18414-enUS-Repack
    ```
 
-2. Ejecuta el servicio extractor:
-   ```bash
-   docker compose --profile tools run --rm extractor
-   ```
+2. Ejecuta el servicio extractor (mediante scripts o comando):
+   - **En Windows**: doble clic en [`scripts/extract-data.bat`](file:///c:/Users/xooty/Desktop/Code/SkyFire_548_Docker/scripts/extract-data.bat) o ejecuta [`scripts/extract-data.ps1`](file:///c:/Users/xooty/Desktop/Code/SkyFire_548_Docker/scripts/extract-data.ps1)
+   - **En Linux / WSL / macOS**: ejecuta `./scripts/extract-data.sh`
+   - **Por comando directo (Universal)**:
+     ```bash
+     docker compose --profile tools run --rm --no-deps extractor
+     ```
 
 > [!NOTE]
 > Los datos se guardarán automáticamente en `data/server/game-data/`. La generación de `mmaps` puede demorar varias horas debido al cálculo exhaustivo de rutas y mallas de navegación.

@@ -70,7 +70,8 @@ services:
   extractor:
     profiles: ["tools"]
     image: skyfire548-server:latest
-    container_name: skyfire-extractor
+    restart: "no"
+    network_mode: "none"
     volumes:
       - "${CLIENT_PATH:-D:/MoP/MOP-5.4.8.18414-enUS-Repack}:/client:ro"
       - "${GAME_DATA_PATH:-./data/server/game-data}:/data"
