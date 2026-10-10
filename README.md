@@ -143,9 +143,30 @@ Si cambiaste configuraciones y quieres reiniciar los procesos del juego sin apag
 docker compose restart authserver worldserver
 ```
 
-### Consola Interactiva (Comandos GM y Crear Cuentas)
+### Creación de Cuentas (Método Rápido e Interactivo)
 
-`worldserver` se ejecuta con terminal interactiva asignada. Para conectarte:
+El proyecto incluye un script en Python ([`scripts/create_account.py`](file:///c:/Users/usr/Desktop/Code/SkyFire_548_Docker/scripts/create_account.py)) que calcula automáticamente el hash criptográfico SRP-6 nativo de MoP 5.4.8 y registra la cuenta en la base de datos de forma dinámica (lee las contraseñas de tu archivo [`.env`](file:///c:/Users/usr/Desktop/Code/SkyFire_548_Docker/.env) automáticamente 
+
+#### Modo Interactivo (Pregunta Usuario, Contraseña y Nivel GM):
+```bash
+python scripts/create_account.py
+```
+> Te solicitará el nombre de usuario, la contraseña (con texto oculto) y el nivel de acceso (0 para jugador normal, 4 para GM Supremo / Administrador).
+
+#### Modo Directo por Línea de Comandos:
+```bash
+python scripts/create_account.py <usuario> <contraseña> [nivel_gm]
+```
+*Ejemplo (Crear GM Supremo):*
+```bash
+python scripts/create_account.py mi_admin superclave 4
+```
+
+---
+
+### Consola Interactiva de WorldServer (Alternativa Manual)
+
+`worldserver` también soporta la terminal interactiva de SkyFire. Para conectarte:
 
 ```bash
 docker attach skyfire-worldserver
@@ -155,10 +176,21 @@ Una vez dentro de la consola del servidor (`SF>`), ejecuta:
 
 ```text
 account create miusuario mipassword
-account set gmlevel miusuario 3 -1
+account set gmlevel miusuario 4 -1
 ```
 
-> **IMPORTANTE:** Para salir de la consola sin detener el servidor, presiona **`Ctrl + P`** seguido de **`Ctrl + Q`**.
+> [!NOTE]
+> Niveles de GM:
+> - `0`: Jugador normal
+> - `1`: Moderador
+> - `2`: Game Master (GM)
+> - `3`: Bug Hunter / Desarrollador
+> - `4`: Administrador / GM Supremo (Acceso total a todos los comandos)
+>
+> El `-1` indica que el rango aplica para todos los reinos.
+
+> [!CAUTION]
+> Para salir de la consola sin detener el servidor, presiona **`Ctrl + P`** seguido de **`Ctrl + Q`**. Si presionas `Ctrl + C`, apagarás el servidor.
 
 ### Detener los Servicios
 
