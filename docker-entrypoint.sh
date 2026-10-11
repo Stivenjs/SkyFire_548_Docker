@@ -10,7 +10,7 @@ WORLD_DB="${WORLD_DB:-world}"
 CHARACTERS_DB="${CHARACTERS_DB:-characters}"
 DATA_DIR="${DATA_DIR:-/opt/skyfire-server/data}"
 LOGS_DIR="${LOGS_DIR:-/opt/skyfire-server/logs}"
-CONFIG_DIR="/opt/skyfire-server/etc"
+CONFIG_DIR="${CONFIG_DIR:-/opt/skyfire-server/etc}"
 
 mkdir -p "$CONFIG_DIR" "$DATA_DIR" "$LOGS_DIR"
 

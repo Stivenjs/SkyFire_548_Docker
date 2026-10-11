@@ -1,0 +1,18 @@
+services:
+  # Reuse the main worldserver service and ports, but compile from the mounted
+  # local checkout each time this container starts.
+  worldserver:
+    build:
+      target: build-deps
+    image: skyfire548-worldserver-dev:latest
+    entrypoint: ["/bin/bash", "/usr/local/bin/dev-entrypoint.sh"]
+    volumes:
+      - ../SkyFire_548:/workspace/source
+      - skyfire_dev_build:/workspace/build
+      - ../SkyFire_548/sql:/opt/skyfire-server/sql:ro
+      - ./docker-entrypoint.sh:/usr/local/bin/docker-entrypoint.sh:ro
+      - ./dev-entrypoint.sh:/usr/local/bin/dev-entrypoint.sh:ro
+
+volumes:
+  skyfire_dev_build:
+    name: skyfire-dev-build

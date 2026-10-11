@@ -37,6 +37,13 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        SKYFIRE_SOURCE: ${SKYFIRE_SOURCE:-github}
+        SKYFIRE_BUILD_REF: ${SKYFIRE_BUILD_REF:-main}
+        BUILD_JOBS: ${BUILD_JOBS:-4}
+      additional_contexts:
+        skyfire_local: ../SkyFire_548
+        docker_project: .
     image: skyfire548-server:latest
     container_name: skyfire-db-init
     restart: "no"
@@ -133,6 +140,13 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        SKYFIRE_SOURCE: ${SKYFIRE_SOURCE:-github}
+        SKYFIRE_BUILD_REF: ${SKYFIRE_BUILD_REF:-main}
+        BUILD_JOBS: ${BUILD_JOBS:-4}
+      additional_contexts:
+        skyfire_local: ../SkyFire_548
+        docker_project: .
     image: skyfire548-server:latest
     container_name: skyfire-authserver
     restart: unless-stopped
@@ -166,6 +180,13 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        SKYFIRE_SOURCE: ${SKYFIRE_SOURCE:-github}
+        SKYFIRE_BUILD_REF: ${SKYFIRE_BUILD_REF:-main}
+        BUILD_JOBS: ${BUILD_JOBS:-4}
+      additional_contexts:
+        skyfire_local: ../SkyFire_548
+        docker_project: .
     image: skyfire548-server:latest
     container_name: skyfire-worldserver
     restart: unless-stopped

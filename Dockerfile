@@ -1,7 +1,10 @@
-FROM ubuntu:24.04 AS builder
+ARG SKYFIRE_SOURCE=github
+ARG SKYFIRE_BUILD_REF=main
+ARG BUILD_JOBS=4
+
+FROM ubuntu:24.04 AS build-deps
 
 ARG DEBIAN_FRONTEND=noninteractive
-ARG SKYFIRE_REF=main
 ARG BUILD_JOBS=4
 
 ENV CC=gcc-14
@@ -27,6 +30,7 @@ RUN apt-get update && \
       wget \
       perl \
       pkg-config \
+      netcat-openbsd \
       bzip2 \
       libbz2-dev \
       libreadline-dev \
@@ -60,12 +64,36 @@ RUN wget -q https://www.openssl.org/source/openssl-4.0.1.tar.gz && \
     make install_sw install_ssldirs && \
     rm -rf /tmp/deps/openssl-4.0.1*
 
-# Fetch SkyFire source
+# Match the provider path used by the packaged runtime image.
+RUN set -eux; \
+    module_dir="$(find /opt/openssl-4.0.1 -type d -name ossl-modules -print -quit)"; \
+    test -n "$module_dir"; \
+    ln -s "$module_dir" /opt/openssl-4.0.1/ossl-modules
+ENV OPENSSL_MODULES=/opt/openssl-4.0.1/ossl-modules
+
+# GitHub source option
+FROM build-deps AS source-github
+ARG SKYFIRE_BUILD_REF=main
 WORKDIR /src
 
 RUN git clone \
       https://github.com/ProjectSkyfire/SkyFire_548.git . && \
-    git checkout "${SKYFIRE_REF}"
+      git checkout "${SKYFIRE_BUILD_REF}"
+
+# Local development checkout option. The skyfire_local named build context is
+# provided by docker-compose.yml and points to the sibling SkyFire_548 repo.
+FROM build-deps AS source-dev
+WORKDIR /src
+COPY --from=skyfire_local . /src/
+
+# Compile the selected source tree. SKYFIRE_SOURCE is "github" or "dev".
+FROM source-${SKYFIRE_SOURCE} AS builder
+ARG BUILD_JOBS=4
+ENV CC=gcc-14
+ENV CXX=g++-14
+ENV BOOST_ROOT=/opt/boost_1_91_0
+ENV OPENSSL_ROOT_DIR=/opt/openssl-4.0.1
+ENV LD_LIBRARY_PATH=/opt/openssl-4.0.1/lib64:/opt/openssl-4.0.1/lib
 
 # Configure, compile and install.
 # PCH is enabled by default: do not pass -DNOPCH=1.
@@ -131,7 +159,7 @@ ENV OPENSSL_MODULES=/opt/openssl-4.0.1/ossl-modules
 WORKDIR /opt/skyfire-server
 
 # Add entrypoint for automated configuration and startup
-COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+COPY --from=docker_project /docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]

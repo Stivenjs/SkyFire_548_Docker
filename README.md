@@ -98,7 +98,12 @@ data/
 > Sigue los pasos **en orden**. El Paso A (build) es obligatorio antes de cualquier otro comando, ya que todos los servicios dependen de la imagen compilada.
 
 #### Paso A: Compilar la Imagen Docker (Obligatorio la primera vez)
-Esto compila SkyFire 548 desde código fuente y crea la imagen `skyfire548-server:latest`. Este proceso tarda varios minutos pero solo se ejecuta una vez:
+Esto crea la imagen `skyfire548-server:latest`. En `.env`, elige la fuente del código:
+
+- `SKYFIRE_SOURCE=github`: clona la ref indicada por `SKYFIRE_BUILD_REF` (por defecto `main`).
+- `SKYFIRE_SOURCE=dev`: compila el checkout local `../SkyFire_548`, incluidos tus cambios sin commit.
+
+Después ejecuta:
 
 ```bash
 docker compose build
@@ -106,6 +111,24 @@ docker compose build
 
 > [!NOTE]
 > Si en el futuro modificas el Dockerfile y quieres forzar una recompilación, ejecuta `docker compose build --no-cache`.
+
+#### Modo de desarrollo incremental
+
+Para probar cambios en el `worldserver` principal sin reconstruir la imagen completa por cada cambio de C++, combina el Compose habitual con `docker-compose.dev.yml`. La primera vez prepara una imagen con las dependencias de compilación; al iniciar, el contenedor principal compila el checkout local y ejecuta ese mismo binario:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml build worldserver
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up --no-build -d worldserver
+```
+
+El servicio mantiene el nombre `skyfire-worldserver`, sus puertos y sus datos/configuración. Monta `../SkyFire_548` y conserva el directorio CMake en el volumen `skyfire-dev-build`. Después de editar C++, reinícialo: CMake recompila incrementalmente lo necesario, instala el binario dentro del contenedor principal y lo ejecuta:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml restart worldserver
+docker compose -f docker-compose.yml -f docker-compose.dev.yml logs -f worldserver
+```
+
+Para volver al binario empaquetado, arranca el servicio con `docker-compose.yml` sin el override de desarrollo.
 
 ---
 
